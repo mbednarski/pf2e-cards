@@ -1,6 +1,23 @@
 # pf2e-cards
 
-Product documentation for the PF2E printable cards app is available in:
+Local-first React app for turning pasted Archives of Nethys text into printable Pathfinder 2e Remaster cards.
 
-- `PRODUCT_SPEC.md` — formal requirements, behavior, and acceptance criteria.
-- `IMPLEMENTATION_TODO.md` — engineering kickoff checklist and milestones.
+## App
+
+- `src/` contains the React + TypeScript MVP implementation.
+- `PRODUCT_SPEC.md` captures the formal product requirements.
+- `IMPLEMENTATION_TODO.md` records the original kickoff checklist.
+
+## Run locally
+
+```bash
+npm install
+npm run dev
+```
+
+## Test and build
+
+```bash
+npm run test:run
+npm run build
+```
