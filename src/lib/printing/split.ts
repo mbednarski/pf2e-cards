@@ -1,7 +1,35 @@
 import { CARD_SECTION_CHARACTER_BUDGET } from "../../constants";
-import type { CardSection, ParsedCard, SplitCard } from "../../types";
+import type { CardFact, CardKind, CardSection, ParsedCard, SplitCard } from "../../types";
 
-function sectionFromValue(label: string, value?: string | null) {
+type SummaryFieldKey =
+  | "traditions"
+  | "castOrActivate"
+  | "usageBulk"
+  | "rangeAreaTargets"
+  | "defense"
+  | "frequencyTriggerEffect"
+  | "priceGp";
+
+const FIELD_LABELS: Record<SummaryFieldKey, string> = {
+  traditions: "Traditions",
+  castOrActivate: "Cast / Activate",
+  usageBulk: "Usage / Bulk",
+  rangeAreaTargets: "Range / Area / Targets",
+  defense: "Defense",
+  frequencyTriggerEffect: "Frequency / Trigger / Effect",
+  priceGp: "Price",
+};
+
+const SUMMARY_FIELD_ORDER: Record<CardKind, SummaryFieldKey[]> = {
+  spell: ["castOrActivate", "rangeAreaTargets", "defense", "traditions", "priceGp"],
+  scroll: ["castOrActivate", "rangeAreaTargets", "defense", "traditions", "priceGp"],
+  item: ["usageBulk", "castOrActivate", "frequencyTriggerEffect", "defense", "priceGp"],
+  action: ["usageBulk", "castOrActivate", "frequencyTriggerEffect", "defense", "priceGp"],
+};
+
+const ALL_SUMMARY_FIELDS = Object.keys(FIELD_LABELS) as SummaryFieldKey[];
+
+function sectionFromValue(label: string, value: string | null | undefined, group: CardSection["group"]) {
   if (!value) {
     return null;
   }
@@ -9,10 +37,11 @@ function sectionFromValue(label: string, value?: string | null) {
   return {
     label,
     content: value,
+    group,
   } satisfies CardSection;
 }
 
-function sectionFromList(label: string, values?: string[]) {
+function sectionFromList(label: string, values: string[] | undefined, group: CardSection["group"]) {
   if (!values || values.length === 0) {
     return null;
   }
@@ -20,33 +49,75 @@ function sectionFromList(label: string, values?: string[]) {
   return {
     label,
     content: values,
+    group,
   } satisfies CardSection;
+}
+
+function getSummaryFieldValue(card: ParsedCard, field: SummaryFieldKey) {
+  const rawValue = card[field];
+
+  if (Array.isArray(rawValue)) {
+    return rawValue.join(", ");
+  }
+
+  return rawValue?.trim() || undefined;
+}
+
+function getOrderedSummaryFields(kind: CardKind) {
+  const preferred = SUMMARY_FIELD_ORDER[kind];
+  return [...preferred, ...ALL_SUMMARY_FIELDS.filter((field) => !preferred.includes(field))];
+}
+
+export function buildCardSummaryFacts(card: ParsedCard): CardFact[] {
+  return getOrderedSummaryFields(card.kind).flatMap((field) => {
+    const value = getSummaryFieldValue(card, field);
+    if (!value) {
+      return [];
+    }
+
+    return [
+      {
+        label: FIELD_LABELS[field],
+        value,
+      },
+    ];
+  });
 }
 
 export function buildCardSections(card: ParsedCard): CardSection[] {
   const sections = [
-    sectionFromValue("Kind", card.kind),
-    sectionFromValue("Rank / Level", card.rankOrLevel),
-    sectionFromList("Traits", card.traits),
-    sectionFromList("Traditions", card.traditions),
-    sectionFromValue("Cast / Activate", card.castOrActivate),
-    sectionFromValue("Usage / Bulk", card.usageBulk),
-    sectionFromValue("Range / Area / Targets", card.rangeAreaTargets),
-    sectionFromValue("Defense", card.defense),
-    sectionFromValue("Frequency / Trigger / Effect", card.frequencyTriggerEffect),
-    sectionFromValue("Price", card.priceGp ?? undefined),
-    sectionFromList("Computed Values", card.computedValues),
-    sectionFromList("Passive Effects", card.passiveEffects),
-    sectionFromList("Granted Actions", card.grantedActions),
-    sectionFromValue("Description", card.description),
+    sectionFromList("Computed Values", card.computedValues, "highlight"),
+    sectionFromList("Passive Effects", card.passiveEffects, "highlight"),
+    sectionFromList("Granted Actions", card.grantedActions, "highlight"),
+    sectionFromValue("Description", card.description, "prose"),
   ];
 
   return sections.filter((section): section is NonNullable<(typeof sections)[number]> => section !== null);
 }
 
+const HIGHLIGHT_SECTION_CHROME = 15;
+const PROSE_SECTION_CHROME = 6;
+
 function estimateSectionSize(section: CardSection) {
   const content = Array.isArray(section.content) ? section.content.join(" ") : section.content;
-  return section.label.length + content.length + 24;
+  const chromeWeight = section.group === "highlight" ? HIGHLIGHT_SECTION_CHROME : PROSE_SECTION_CHROME;
+  return section.label.length + content.length + chromeWeight;
+}
+
+const BASE_CHROME_COST = 70;
+const TRAIT_INLINE_CHROME = 2;
+const SUMMARY_FACT_CHROME = 3;
+const MIN_BODY_BUDGET = 250;
+const MIN_CHUNK_BUDGET = 200;
+
+function estimateRepeatedOverhead(card: ParsedCard, summaryFacts: CardFact[]) {
+  const traitWeight = card.traits.reduce((sum, trait) => sum + trait.length + TRAIT_INLINE_CHROME, 0);
+  const summaryWeight = summaryFacts.reduce(
+    (sum, fact) => sum + fact.value.length + SUMMARY_FACT_CHROME,
+    0,
+  );
+
+  return BASE_CHROME_COST + card.name.length + traitWeight + summaryWeight;
 }
 
 function chunkText(text: string, budget: number) {
@@ -97,29 +168,33 @@ function chunkSection(section: CardSection, budget: number): CardSection[] {
     return section.content.map((entry) => ({
       label: section.label,
       content: entry,
+      group: section.group,
     }));
   }
 
-  const contentBudget = Math.max(200, budget - section.label.length - 24);
+  const contentBudget = Math.max(MIN_CHUNK_BUDGET, budget - section.label.length - 18);
   return chunkText(section.content, contentBudget).map((chunk) => ({
     label: section.label,
     content: chunk,
+    group: section.group,
   }));
 }
 
 export function splitParsedCard(card: ParsedCard, budget = CARD_SECTION_CHARACTER_BUDGET): SplitCard[] {
+  const summaryFacts = buildCardSummaryFacts(card);
   const sections = buildCardSections(card);
+  const bodyBudget = Math.max(MIN_BODY_BUDGET, budget - estimateRepeatedOverhead(card, summaryFacts));
   const parts: CardSection[][] = [];
   let currentPart: CardSection[] = [];
   let currentSize = 0;
 
   for (const section of sections) {
     const sectionSize = estimateSectionSize(section);
-    const chunks = sectionSize <= budget ? [section] : chunkSection(section, budget);
+    const chunks = sectionSize <= bodyBudget ? [section] : chunkSection(section, bodyBudget);
 
     for (const chunk of chunks) {
       const chunkSize = estimateSectionSize(chunk);
-      if (currentPart.length > 0 && currentSize + chunkSize > budget) {
+      if (currentPart.length > 0 && currentSize + chunkSize > bodyBudget) {
         parts.push(currentPart);
         currentPart = [];
         currentSize = 0;
@@ -144,6 +219,7 @@ export function splitParsedCard(card: ParsedCard, budget = CARD_SECTION_CHARACTE
     kind: card.kind,
     rankOrLevel: card.rankOrLevel,
     traits: card.traits,
+    summaryFacts,
     boldTokens: card.boldTokens,
     sections: partSections,
   }));
