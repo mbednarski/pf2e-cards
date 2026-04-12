@@ -1,8 +1,42 @@
 import { INITIAL_STATE, STORAGE_KEY } from "../../constants";
-import type { AppState, PersistedState } from "../../types";
+import type { AppState, BatchItem, PersistedState } from "../../types";
+import { debugLog } from "../debug";
+import { splitParsedCard } from "../printing/split";
 
 function isBrowser() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+}
+
+function rehydrateBatch(batch: unknown): BatchItem[] {
+  if (!Array.isArray(batch)) {
+    debugLog("storage", "Rehydrated persisted batch", { in: 0, out: 0, reason: "not-array" });
+    return [];
+  }
+
+  const items = batch.flatMap((raw) => {
+    if (!raw || typeof raw !== "object") {
+      return [];
+    }
+
+    const item = raw as Partial<BatchItem>;
+    if (!item.card || !item.id) {
+      return [];
+    }
+
+    try {
+      return [
+        {
+          ...(item as BatchItem),
+          plannedCards: splitParsedCard(item.card),
+        },
+      ];
+    } catch {
+      return [];
+    }
+  });
+
+  debugLog("storage", "Rehydrated persisted batch", { in: batch.length, out: items.length });
+  return items;
 }
 
 function sanitizePersistedState(state: PersistedState): PersistedState {
@@ -50,7 +84,7 @@ export function loadPersistedState(): PersistedState {
         ...INITIAL_STATE.draft,
         ...parsed.draft,
       },
-      batch: parsed.batch ?? [],
+      batch: rehydrateBatch(parsed.batch),
     });
   } catch {
     return INITIAL_STATE;
