@@ -353,18 +353,35 @@ textarea {
 .card-face-header {
   display: flex;
   flex-direction: column;
-  gap: 0.8mm;
+  gap: 0.6mm;
+}
+
+.card-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.6mm;
+}
+
+.card-meta-cluster {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1.6mm;
+  flex-shrink: 0;
 }
 
 .card-eyebrow {
   display: flex;
   align-items: center;
-  gap: 1mm;
+  gap: 0.8mm;
+  margin: 0;
   color: var(--card-accent-ink);
   font-size: 5.4pt;
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
+  line-height: 1;
 }
 
 .card-kind-badge {
@@ -380,16 +397,12 @@ textarea {
 }
 
 .card-part-indicator {
-  margin-left: 0.8mm;
+  margin-left: 0.6mm;
   padding: 0.2mm 1mm;
   border: 0.2mm solid var(--card-hairline);
   border-radius: 999px;
   color: var(--card-ink-soft);
   letter-spacing: 0.1em;
-}
-
-.card-eyebrow-spacer {
-  flex: 1 1 auto;
 }
 
 .card-cast-text {
@@ -398,17 +411,18 @@ textarea {
   letter-spacing: 0.04em;
   text-transform: none;
   font-weight: 500;
+  flex-shrink: 0;
 }
 
 .action-glyph {
   display: inline-flex;
   align-items: center;
   color: var(--card-accent);
-  height: 3.6mm;
+  height: 4.2mm;
 }
 
 .action-glyph-svg {
-  height: 3.6mm;
+  height: 4.2mm;
   width: auto;
   display: block;
 }
@@ -416,11 +430,14 @@ textarea {
 .card-title {
   margin: 0;
   font-family: var(--card-serif);
-  font-size: 15pt;
+  font-size: 16pt;
   font-weight: 600;
-  line-height: 1;
-  letter-spacing: -0.005em;
+  line-height: 0.95;
+  letter-spacing: -0.008em;
   color: var(--card-accent-ink);
+  flex: 1 1 auto;
+  min-width: 0;
+  word-break: break-word;
 }
 
 .card-title-rule {
@@ -432,17 +449,25 @@ textarea {
 }
 
 .card-traits {
-  margin: 0.3mm 0 0;
-  font-family: var(--card-serif);
-  font-style: italic;
-  font-size: 7.5pt;
-  line-height: 1.1;
-  color: var(--card-ink-soft);
-  letter-spacing: 0.01em;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8mm 0.8mm;
+  margin: 0.6mm 0 0;
 }
 
-.card-trait-sep {
-  color: var(--card-hairline);
+.card-trait {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3mm 1.1mm 0.4mm;
+  border: 0.25mm solid var(--card-accent);
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--card-accent);
+  font-family: var(--card-sans);
+  font-size: 5.4pt;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1;
 }
 
 .card-stats {
@@ -542,18 +567,6 @@ textarea {
   border-left: 0.3mm solid var(--card-hairline);
 }
 
-.card-prose-heightened {
-  font-size: 7pt;
-  line-height: 1.3;
-  color: var(--card-ink);
-}
-
-.card-prose-heightened strong {
-  color: var(--card-accent);
-  font-weight: 700;
-  letter-spacing: 0.01em;
-}
-
 .card-ladder {
   margin: 0;
   display: grid;
@@ -609,14 +622,13 @@ textarea {
 }
 
 .card-face.compact .card-title {
-  font-size: 13pt;
+  font-size: 14pt;
 }
 
 .card-face.compact .card-stats,
 .card-face.compact .card-highlight-text,
 .card-face.compact .card-highlight-list,
 .card-face.compact .card-prose,
-.card-face.compact .card-prose-heightened,
 .card-face.compact .card-ladder {
   font-size: 6.6pt;
 }

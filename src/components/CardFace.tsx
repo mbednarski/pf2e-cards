@@ -13,8 +13,22 @@ const SHORT_LABEL: Record<string, string> = {
   Traditions: "Traditions",
 };
 
+const VALUE_PREFIX_STRIPPERS: Record<string, RegExp> = {
+  "Range / Area / Targets": /^(Range|Area|Targets)\s+/i,
+  "Usage / Bulk": /^Usage\s+/i,
+  "Frequency / Trigger / Effect": /^Frequency\s+/i,
+  Defense: /^Defense\s+/i,
+};
+
+function stripLabelPrefix(label: string, value: string): string {
+  const pattern = VALUE_PREFIX_STRIPPERS[label];
+  if (!pattern) return value;
+  return value.replace(pattern, "").trim();
+}
+
 const LADDER_LABELS = ["Critical Success", "Critical Failure", "Success", "Failure"] as const;
 type LadderLabel = (typeof LADDER_LABELS)[number];
+type LadderEntry = { label: LadderLabel; rest: string };
 
 const LADDER_DISPLAY: Record<LadderLabel, string> = {
   "Critical Success": "Crit. Success",
@@ -23,66 +37,94 @@ const LADDER_DISPLAY: Record<LadderLabel, string> = {
   Failure: "Failure",
 };
 
-function matchLadder(paragraph: string): { label: LadderLabel; rest: string } | null {
-  const trimmed = paragraph.trim();
-  for (const label of LADDER_LABELS) {
-    if (trimmed === label) {
-      return { label, rest: "" };
-    }
-    if (trimmed.startsWith(`${label} `) || trimmed.startsWith(`${label}\n`)) {
-      return { label, rest: trimmed.slice(label.length).trim() };
-    }
-  }
-  return null;
+const LADDER_PATTERN = /\b(Critical Success|Critical Failure|Success|Failure)\b/g;
+
+function cleanRest(text: string): string {
+  return text.trim().replace(/^[:.\s]+/, "").replace(/[\s]+$/, "");
 }
 
-function matchHeightened(paragraph: string): { leader: string; rest: string } | null {
-  const trimmed = paragraph.trim();
-  const match = /^(Heightened(?:\s*\([^)]+\))?)(?:[:.\s]+)(.*)$/s.exec(trimmed);
-  if (!match) return null;
-  return { leader: match[1], rest: match[2].trim() };
+function extractLadder(text: string): { prefix: string; entries: LadderEntry[] } | null {
+  const hits: Array<{ label: LadderLabel; start: number; end: number }> = [];
+  LADDER_PATTERN.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = LADDER_PATTERN.exec(text)) !== null) {
+    hits.push({
+      label: match[1] as LadderLabel,
+      start: match.index,
+      end: match.index + match[1].length,
+    });
+  }
+  if (hits.length === 0) return null;
+
+  const prefix = text.slice(0, hits[0].start).trim().replace(/[\s.]+$/, "");
+  const entries: LadderEntry[] = hits.map((hit, i) => {
+    const startContent = hit.end;
+    const endContent = i + 1 < hits.length ? hits[i + 1].start : text.length;
+    return { label: hit.label, rest: cleanRest(text.slice(startContent, endContent)) };
+  });
+
+  return { prefix, entries };
+}
+
+function isHeightenedLine(paragraph: string) {
+  return /^Heightened\b/i.test(paragraph.trim());
 }
 
 function isSavingThrowLine(paragraph: string) {
   return /^(Saving Throw|Save)\b/i.test(paragraph.trim());
 }
 
+function splitAtHeightened(paragraph: string): string[] {
+  if (/^Heightened\b/i.test(paragraph)) return [paragraph];
+  const match = /\bHeightened\b/i.exec(paragraph);
+  if (!match) return [paragraph];
+  return [
+    paragraph.slice(0, match.index).trim(),
+    paragraph.slice(match.index).trim(),
+  ].filter(Boolean);
+}
+
 type ProseBlock =
   | { kind: "flavor"; text: string }
-  | { kind: "heightened"; leader: string; rest: string }
-  | { kind: "ladder"; entries: Array<{ label: LadderLabel; rest: string }> };
+  | { kind: "ladder"; entries: LadderEntry[] };
 
 function classifyProse(text: string, { hasDefense }: { hasDefense: boolean }): ProseBlock[] {
-  const paragraphs = text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+  const paragraphs = text
+    .split(/\n+/)
+    .flatMap(splitAtHeightened)
+    .map((p) => p.trim())
+    .filter(Boolean);
   const blocks: ProseBlock[] = [];
-  let ladder: Array<{ label: LadderLabel; rest: string }> = [];
+  let ladderRun: LadderEntry[] = [];
 
   const flushLadder = () => {
-    if (ladder.length > 0) {
-      blocks.push({ kind: "ladder", entries: ladder });
-      ladder = [];
+    if (ladderRun.length > 0) {
+      blocks.push({ kind: "ladder", entries: ladderRun });
+      ladderRun = [];
     }
   };
 
   for (const paragraph of paragraphs) {
-    if (hasDefense && isSavingThrowLine(paragraph)) {
+    if (isHeightenedLine(paragraph)) continue;
+    if (hasDefense && isSavingThrowLine(paragraph)) continue;
+
+    const ladder = extractLadder(paragraph);
+
+    if (ladder && ladder.entries.length >= 2) {
+      if (ladder.prefix && !isSavingThrowLine(ladder.prefix) && !isHeightenedLine(ladder.prefix)) {
+        flushLadder();
+        blocks.push({ kind: "flavor", text: ladder.prefix });
+      }
+      ladderRun.push(...ladder.entries);
       continue;
     }
 
-    const ladderHit = matchLadder(paragraph);
-    if (ladderHit) {
-      ladder.push(ladderHit);
+    if (ladder && ladder.entries.length === 1 && ladder.prefix === "") {
+      ladderRun.push(ladder.entries[0]);
       continue;
     }
 
     flushLadder();
-
-    const heightenedHit = matchHeightened(paragraph);
-    if (heightenedHit) {
-      blocks.push({ kind: "heightened", leader: heightenedHit.leader, rest: heightenedHit.rest });
-      continue;
-    }
-
     blocks.push({ kind: "flavor", text: paragraph });
   }
 
@@ -94,6 +136,8 @@ function renderProseSection(section: CardSection, boldTokens: string[] | undefin
   const text = Array.isArray(section.content) ? section.content.join("\n\n") : section.content;
   const blocks = classifyProse(text, { hasDefense });
 
+  if (blocks.length === 0) return null;
+
   return (
     <div className="card-prose">
       {blocks.map((block, index) => {
@@ -101,14 +145,6 @@ function renderProseSection(section: CardSection, boldTokens: string[] | undefin
           return (
             <p className="card-prose-flavor" key={`flavor-${index}`}>
               {highlightMechanicalText(block.text, boldTokens)}
-            </p>
-          );
-        }
-
-        if (block.kind === "heightened") {
-          return (
-            <p className="card-prose-heightened" key={`heightened-${index}`}>
-              <strong>{block.leader}</strong> {highlightMechanicalText(block.rest, boldTokens)}
             </p>
           );
         }
@@ -154,7 +190,7 @@ export default function CardFace({ card, compact = false }: { card: SplitCard; c
   const sections = card.sections ?? [];
   const partIndex = card.partIndex ?? 1;
   const partTotal = card.partTotal ?? 1;
-  const partLabel = partTotal > 1 ? `${partIndex}/${partTotal}` : "Single";
+  const partLabel = partTotal > 1 ? `${partIndex}/${partTotal}` : null;
 
   const castFact = findFact(summaryFacts, "Cast / Activate");
   const traditionsFact = findFact(summaryFacts, "Traditions");
@@ -176,44 +212,50 @@ export default function CardFace({ card, compact = false }: { card: SplitCard; c
       data-part-total={partTotal}
     >
       <header className="card-face-header">
-        <div className="card-eyebrow">
-          <span className="card-kind-badge">{card.kind.toUpperCase()}</span>
-          <span className="card-rank-dot" aria-hidden="true">
-            ·
-          </span>
-          <span className="card-rank">{card.rankOrLevel}</span>
-          {partTotal > 1 ? <span className="card-part-indicator">{partLabel}</span> : null}
-          <span className="card-eyebrow-spacer" />
-          {actionCost ? (
-            <ActionGlyph value={castFact?.value} />
-          ) : castFact ? (
-            <span className="card-cast-text">{castFact.value}</span>
-          ) : null}
+        <div className="card-header-row">
+          <h3 className="card-title">{card.title}</h3>
+          <div className="card-meta-cluster">
+            <p className="card-eyebrow">
+              <span className="card-kind-badge">{card.kind.toUpperCase()}</span>
+              <span className="card-rank-dot" aria-hidden="true">
+                ·
+              </span>
+              <span className="card-rank">{card.rankOrLevel}</span>
+              {partLabel ? <span className="card-part-indicator">{partLabel}</span> : null}
+            </p>
+            {actionCost ? (
+              <ActionGlyph value={castFact?.value} />
+            ) : castFact ? (
+              <span className="card-cast-text">{castFact.value}</span>
+            ) : null}
+          </div>
         </div>
-
-        <h3 className="card-title">{card.title}</h3>
         <span className="card-title-rule" aria-hidden="true" />
 
         {traits.length > 0 ? (
-          <p className="card-traits">
-            {traits.map((trait, index) => (
+          <div className="card-traits">
+            {traits.map((trait) => (
               <span key={trait} className="card-trait">
-                {trait.toLowerCase()}
-                {index < traits.length - 1 ? <span className="card-trait-sep"> · </span> : null}
+                {trait}
               </span>
             ))}
-          </p>
+          </div>
         ) : null}
       </header>
 
       {inlineFacts.length > 0 || priceFact ? (
         <div className="card-stats">
-          {inlineFacts.map((fact) => (
-            <span className="card-stat" key={`${fact.label}-${fact.value}`}>
-              <span className="card-stat-label">{SHORT_LABEL[fact.label] ?? fact.label}</span>
-              <span className="card-stat-value">{highlightMechanicalText(fact.value, card.boldTokens)}</span>
-            </span>
-          ))}
+          {inlineFacts.map((fact) => {
+            const displayValue = stripLabelPrefix(fact.label, fact.value);
+            return (
+              <span className="card-stat" key={`${fact.label}-${fact.value}`}>
+                <span className="card-stat-label">{SHORT_LABEL[fact.label] ?? fact.label}</span>
+                <span className="card-stat-value">
+                  {highlightMechanicalText(displayValue, card.boldTokens)}
+                </span>
+              </span>
+            );
+          })}
           {priceFact ? (
             <span className="card-stat card-stat-price">
               <span className="card-stat-label">Price</span>
@@ -224,21 +266,24 @@ export default function CardFace({ card, compact = false }: { card: SplitCard; c
       ) : null}
 
       <div className="card-body">
-        {sections.map((section, index) => (
-          <section
-            className={`card-section card-section-${section.group}`}
-            key={`${section.label}-${index}`}
-          >
-            {section.group === "highlight" ? (
-              <>
-                <h4 className="card-section-label">{section.label}</h4>
-                {renderHighlightSection(section, card.boldTokens)}
-              </>
-            ) : (
-              renderProseSection(section, card.boldTokens, hasDefense)
-            )}
-          </section>
-        ))}
+        {sections.map((section, index) => {
+          const hideLabel = section.group === "highlight" && section.label === "Computed Values";
+          return (
+            <section
+              className={`card-section card-section-${section.group}${hideLabel ? " card-section-no-label" : ""}`}
+              key={`${section.label}-${index}`}
+            >
+              {section.group === "highlight" ? (
+                <>
+                  {hideLabel ? null : <h4 className="card-section-label">{section.label}</h4>}
+                  {renderHighlightSection(section, card.boldTokens)}
+                </>
+              ) : (
+                renderProseSection(section, card.boldTokens, hasDefense)
+              )}
+            </section>
+          );
+        })}
       </div>
 
       {traditionsFact ? (
