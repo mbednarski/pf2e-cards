@@ -1,4 +1,4 @@
-import type { CardDraft, ParsedCard, ParserOutput } from "../../types";
+import type { CardDraft, CardKind, ParsedCard, ParserOutput } from "../../types";
 
 function trimList(values?: string[]) {
   return values?.map((value) => value.trim()).filter(Boolean);
@@ -12,11 +12,28 @@ export function stripDeitiesLine(text: string) {
     .trim();
 }
 
+const RANK_OR_LEVEL_PREFIX: Record<CardKind, string> = {
+  item: "Item",
+  spell: "Rank",
+  scroll: "Scroll",
+  action: "Action",
+};
+
+export function normalizeRankOrLevel(raw: string | undefined, kind: CardKind): string | undefined {
+  const trimmed = raw?.trim();
+  if (!trimmed) return undefined;
+  // Already formatted (e.g. "Item 5", "Rank 3") — leave as-is
+  if (/[a-zA-Z]/.test(trimmed)) return trimmed;
+  // Bare number (e.g. "5") — prepend the appropriate prefix
+  const prefix = RANK_OR_LEVEL_PREFIX[kind];
+  return `${prefix} ${trimmed}`;
+}
+
 export function normalizeParsedCard(card: ParsedCard): ParsedCard {
   return {
     ...card,
     name: card.name.trim(),
-    rankOrLevel: card.rankOrLevel?.trim(),
+    rankOrLevel: normalizeRankOrLevel(card.rankOrLevel?.trim(), card.kind),
     description: stripDeitiesLine(card.description),
     traits: trimList(card.traits) ?? [],
     traditions: trimList(card.traditions),

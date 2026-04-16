@@ -65,17 +65,17 @@ function Reaction() {
   return (
     <svg viewBox="0 0 14 14" aria-hidden="true" className="action-glyph-svg">
       <path
-        d="M 7 2.2 A 4.8 4.8 0 1 1 2.7 9.2"
+        d="M 9 2.5 A 4.6 4.6 0 1 1 5 2.5"
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.6"
+        strokeWidth="1.5"
         strokeLinecap="round"
       />
       <path
-        d="M 1.2 6.8 L 2.9 9.5 L 5.4 7.8"
+        d="M 6.5 1 L 5 2.5 L 6.5 4"
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.6"
+        strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
       />

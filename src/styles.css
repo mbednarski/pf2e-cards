@@ -766,6 +766,30 @@ textarea {
   text-align: center;
 }
 
+.card-bottom-bar {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-top: 0.6mm;
+  border-top: 0.2mm solid var(--card-hairline);
+}
+
+.card-bottom-price {
+  font-family: var(--card-sans);
+  font-size: 6pt;
+  font-weight: 600;
+  color: var(--card-ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.card-bottom-level {
+  font-family: var(--card-sans);
+  font-size: 7pt;
+  font-weight: 700;
+  color: var(--card-ink);
+}
+
 .card-face strong {
   color: #000;
   font-weight: 700;
@@ -859,7 +883,7 @@ textarea {
     width: auto;
     min-height: auto;
     margin: 0;
-    padding: 0;
+    padding: 7mm 0 0;
     border: none;
     box-shadow: none;
     border-radius: 0;

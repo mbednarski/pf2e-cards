@@ -38,12 +38,14 @@ const card: SplitCard = {
 };
 
 describe("CardFace", () => {
-  it("renders eyebrow, title, and bordered trait chips", () => {
+  it("renders title, trait chips, and bottom bar with level", () => {
     const { container } = render(<CardFace card={card} />);
 
-    expect(screen.getByText("SPELL")).toBeInTheDocument();
-    expect(screen.getByText("Rank 3")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 3, name: "Slow" })).toBeInTheDocument();
+
+    const bottomLevel = container.querySelector(".card-bottom-level");
+    expect(bottomLevel).not.toBeNull();
+    expect(bottomLevel!.textContent).toContain("Rank 3");
 
     const traits = container.querySelector(".card-traits");
     expect(traits).not.toBeNull();
@@ -51,7 +53,7 @@ describe("CardFace", () => {
     expect(Array.from(chips).map((node) => node.textContent)).toEqual(["Concentrate", "Manipulate"]);
   });
 
-  it("places the title, eyebrow, and action glyph in a single header row", () => {
+  it("places the title and action glyph in a single header row", () => {
     const { container } = render(<CardFace card={card} />);
 
     const row = container.querySelector(".card-header-row");
@@ -60,7 +62,6 @@ describe("CardFace", () => {
     const cluster = row!.querySelector(".card-meta-cluster");
     expect(title).not.toBeNull();
     expect(cluster).not.toBeNull();
-    expect(cluster!.querySelector(".card-eyebrow")).not.toBeNull();
     expect(cluster!.querySelector(".action-glyph")).not.toBeNull();
   });
 

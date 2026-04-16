@@ -10,6 +10,7 @@ Rules:
 - Use price only if it is explicitly present in the pasted source block.
 - If price is present, include sourcePriceEvidence with the exact supporting source snippet.
 - Infer kind as spell, scroll, item, or action.
+- rankOrLevel must use the format "<Kind> <number>": "Item 5" for items, "Rank 3" for spells, "Spell 3" for scrolls. Extract the number from the source header line (e.g. "AmuletItem 5" → "Item 5", "Spell 3" → "Rank 3").
 - For scalable entries, emit selectableOptions and reflect the currently selected option in rankOrLevel and computedValues.
 - Put unresolved ambiguity into unresolvedQuestions.
 - Warnings should be concise and actionable.
@@ -17,7 +18,7 @@ Rules:
 
 Field rules — each piece of source text belongs in exactly ONE field. Never duplicate content across fields:
 - description: ONLY flavor/narrative text. Do NOT include mechanical text (actions, effects, saves, frequency, price, usage) that belongs in other fields. Preserve all flavor text.
-- castOrActivate: The activation name and action cost only (e.g. "Activate—Release Heat [one-action] (concentrate, fire)"). Do NOT include frequency, requirements, or effect text here.
+- castOrActivate: The activation name and action cost only. Use bracket notation for the action cost: [one-action], [two-actions], [three-actions], [reaction], or [free-action]. Examples: "Activate—Release Heat [one-action] (concentrate, fire)", "Activate [free-action] envision". Do NOT include frequency, requirements, or effect text here.
 - frequencyTriggerEffect: ONLY constraints — frequency, trigger, and requirements (e.g. "once per day; Requirements You have a free hand"). Do NOT include the Effect text itself.
 - grantedActions: Full granted-action descriptions including the Effect text (e.g. "You take the heat that's built up in your gloves and discharge it onto an enemy. You deal 6d8 fire damage..."). One entry per action.
 - passiveEffects: Passive benefits granted without activation (e.g. "Gain fire resistance 5 when wearing the gloves").
@@ -83,10 +84,10 @@ Return JSON shaped like:
   "parsed": {
     "name": "string",
     "kind": "spell" | "scroll" | "item" | "action",
-    "rankOrLevel": "string",
+    "rankOrLevel": "Item 5 | Rank 3 | Spell 2",
     "traits": ["string"],
     "traditions": ["string"],
-    "castOrActivate": "activation name + action cost only",
+    "castOrActivate": "activation name + [one-action|two-actions|three-actions|reaction|free-action] + traits",
     "usageBulk": "string",
     "rangeAreaTargets": "range/area/targets only",
     "defense": "save type and DC only",

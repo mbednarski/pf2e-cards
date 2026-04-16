@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createReviewedDraft, priceHasSourceEvidence, stripDeitiesLine } from "./normalize";
+import { createReviewedDraft, normalizeRankOrLevel, priceHasSourceEvidence, stripDeitiesLine } from "./normalize";
 import type { ParserOutput } from "../../types";
 
 const baseOutput: ParserOutput = {
@@ -87,6 +87,31 @@ describe("normalize helpers", () => {
 
     expect(draft.hardBlocks).toContain("The parse is missing the final rank or level.");
     expect(draft.hardBlocks).toContain("Select a spell rank or item variant before adding this card.");
+  });
+
+  describe("normalizeRankOrLevel", () => {
+    it("prepends 'Item' to a bare number for items", () => {
+      expect(normalizeRankOrLevel("5", "item")).toBe("Item 5");
+    });
+
+    it("prepends 'Rank' to a bare number for spells", () => {
+      expect(normalizeRankOrLevel("3", "spell")).toBe("Rank 3");
+    });
+
+    it("prepends 'Scroll' to a bare number for scrolls", () => {
+      expect(normalizeRankOrLevel("7", "scroll")).toBe("Scroll 7");
+    });
+
+    it("leaves already-formatted values unchanged", () => {
+      expect(normalizeRankOrLevel("Item 5", "item")).toBe("Item 5");
+      expect(normalizeRankOrLevel("Rank 3", "spell")).toBe("Rank 3");
+    });
+
+    it("returns undefined for empty or missing values", () => {
+      expect(normalizeRankOrLevel(undefined, "item")).toBeUndefined();
+      expect(normalizeRankOrLevel("", "item")).toBeUndefined();
+      expect(normalizeRankOrLevel("  ", "item")).toBeUndefined();
+    });
   });
 
   it("accepts prices when the evidence is present in the source", () => {

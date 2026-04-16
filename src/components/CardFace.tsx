@@ -26,6 +26,17 @@ function stripLabelPrefix(label: string, value: string): string {
   return value.replace(pattern, "").trim();
 }
 
+function stripBulk(value: string): string {
+  return value.replace(/;?\s*Bulk\b.*/i, "").trim();
+}
+
+function formatPrice(value: string): string {
+  if (/gp/i.test(value)) return value.replace(/\s+gp/i, "gp");
+  const num = value.trim();
+  if (/^\d[\d,]*$/.test(num)) return `${num}gp`;
+  return value;
+}
+
 const LADDER_LABELS = ["Critical Success", "Critical Failure", "Success", "Failure"] as const;
 type LadderLabel = (typeof LADDER_LABELS)[number];
 type LadderEntry = { label: LadderLabel; rest: string };
@@ -198,12 +209,17 @@ export default function CardFace({ card, compact = false }: { card: SplitCard; c
   const actionCost = getActionCost(castFact?.value);
   const hasDefense = Boolean(findFact(summaryFacts, "Defense"));
 
-  const inlineFacts = summaryFacts.filter((fact) => {
-    if (fact.label === "Traditions") return false;
-    if (fact.label === "Price") return false;
-    if (fact.label === "Cast / Activate" && actionCost) return false;
-    return true;
-  });
+  const inlineFacts = summaryFacts
+    .filter((fact) => {
+      if (fact.label === "Traditions") return false;
+      if (fact.label === "Price") return false;
+      if (fact.label === "Cast / Activate" && actionCost) return false;
+      return true;
+    })
+    .map((fact) =>
+      fact.label === "Usage / Bulk" ? { ...fact, value: stripBulk(fact.value) } : fact,
+    )
+    .filter((fact) => fact.value.trim() !== "");
 
   return (
     <article
@@ -215,14 +231,6 @@ export default function CardFace({ card, compact = false }: { card: SplitCard; c
         <div className="card-header-row">
           <h3 className="card-title">{card.title}</h3>
           <div className="card-meta-cluster">
-            <p className="card-eyebrow">
-              <span className="card-kind-badge">{card.kind.toUpperCase()}</span>
-              <span className="card-rank-dot" aria-hidden="true">
-                ·
-              </span>
-              <span className="card-rank">{card.rankOrLevel}</span>
-              {partLabel ? <span className="card-part-indicator">{partLabel}</span> : null}
-            </p>
             {actionCost ? (
               <ActionGlyph value={castFact?.value} />
             ) : castFact ? (
@@ -243,7 +251,7 @@ export default function CardFace({ card, compact = false }: { card: SplitCard; c
         ) : null}
       </header>
 
-      {inlineFacts.length > 0 || priceFact ? (
+      {inlineFacts.length > 0 ? (
         <div className="card-stats">
           {inlineFacts.map((fact) => {
             const displayValue = stripLabelPrefix(fact.label, fact.value);
@@ -256,12 +264,6 @@ export default function CardFace({ card, compact = false }: { card: SplitCard; c
               </span>
             );
           })}
-          {priceFact ? (
-            <span className="card-stat card-stat-price">
-              <span className="card-stat-label">Price</span>
-              <span className="card-stat-value">{priceFact.value}</span>
-            </span>
-          ) : null}
         </div>
       ) : null}
 
@@ -298,6 +300,16 @@ export default function CardFace({ card, compact = false }: { card: SplitCard; c
           </span>
         </footer>
       ) : null}
+
+      <div className="card-bottom-bar">
+        <span className="card-bottom-price">
+          {priceFact ? formatPrice(priceFact.value) : ""}
+        </span>
+        <span className="card-bottom-level">
+          {card.rankOrLevel}
+          {partLabel ? <span className="card-part-indicator">{partLabel}</span> : null}
+        </span>
+      </div>
     </article>
   );
 }
