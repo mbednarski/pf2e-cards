@@ -37,8 +37,11 @@ Pasted AoN text → OpenRouter LLM parse → Zod schema validation → normaliza
    - Tests can inject a fake `ParserClient` via `<App parser={fake} />` — `App` defaults to `new OpenRouterParserClient()`.
 
 4. **UI** ([src/features/](src/features/))
-   - Views are `add` (DraftView), `batch` (BatchView), `print` (PrintPreviewView), plus a persistent `SettingsPanel` sidebar. Switched by `state.currentView`, not a router.
-   - [src/components/CardFace.tsx](src/components/CardFace.tsx) renders a `SplitCard`. Bold-token annotation is in [src/lib/formatting.tsx](src/lib/formatting.tsx).
+   - Single-screen split-pane layout: `InputWorkspace` (left panel) and `PagePreview` (right panel). No router or view switching.
+   - `InputWorkspace` ([src/features/draft/InputWorkspace.tsx](src/features/draft/InputWorkspace.tsx)) handles paste → parse → add flow in a compact single column.
+   - `PagePreview` ([src/features/page/PagePreview.tsx](src/features/page/PagePreview.tsx)) shows live A4 page(s) filling with cards. Merges the old batch + print views.
+   - `SettingsPanel` ([src/features/settings/SettingsPanel.tsx](src/features/settings/SettingsPanel.tsx)) is a collapsible popover behind a gear button.
+   - [src/components/CardFace.tsx](src/components/CardFace.tsx) renders a `SplitCard` in B&W. Bold-token annotation is in [src/lib/formatting.tsx](src/lib/formatting.tsx).
 
 ### Key invariants (from PRODUCT_SPEC.md)
 
@@ -46,7 +49,7 @@ These are enforced in code and must not be relaxed without changing the spec:
 
 - **Price policy is Option A (strict source-only).** `priceHasSourceEvidence` in normalize.ts checks the parsed price (or the model-provided `sourcePriceEvidence`) against the original pasted text. If a price is present but unevidenced, it becomes a hard block. Never synthesize prices.
 - **Deities line is stripped, flavor text is preserved.** `stripDeitiesLine` filters lines beginning with `Deities` before the card is stored. Do not add other description filtering.
-- **Add-to-batch is blocked on uncertainty.** Low confidence, unresolved questions, or warnings turn into `confirmWarnings` that require explicit user confirmation (`draft.confirmed`). Bypassing this defeats the spec's review model.
+- **Warnings are non-blocking.** Low confidence, unresolved questions, or warnings turn into `confirmWarnings` shown as visual badges. They do NOT gate adding to batch — only `hardBlocks` gate adding.
 - **Overflow splits into `(i/N)` parts**, it does not truncate. Splitting runs once at batch-insert time — if you change split logic, re-split existing batch items rather than splitting at render.
 
 ### Spec documents

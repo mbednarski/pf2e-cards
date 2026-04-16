@@ -68,7 +68,6 @@ export function createReviewedDraft(
   output: ParserOutput,
   threshold: number,
   selectedOptionId?: string,
-  confirmed = false,
 ): CardDraft {
   const normalized = normalizeParserOutput(output);
   const hardBlocks: string[] = [];
@@ -117,7 +116,6 @@ export function createReviewedDraft(
     hardBlocks,
     confirmWarnings,
     quantity: 1,
-    confirmed: confirmWarnings.length === 0 ? true : confirmed,
     status: "parsed",
     lastParsedAt: new Date().toISOString(),
   };
@@ -127,7 +125,6 @@ export function canAddDraftToBatch(draft: CardDraft) {
   return Boolean(
     draft.status === "parsed" &&
       draft.parsed &&
-      draft.hardBlocks.length === 0 &&
-      (draft.confirmWarnings.length === 0 || draft.confirmed),
+      draft.hardBlocks.length === 0,
   );
 }

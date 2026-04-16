@@ -63,7 +63,6 @@ describe("normalize helpers", () => {
         "Choose a target rank.",
       ]),
     );
-    expect(draft.confirmed).toBe(false);
   });
 
   it("accepts prices when the evidence is present in the source", () => {

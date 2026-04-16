@@ -29,7 +29,7 @@ class MockParser implements ParserClient {
 }
 
 describe("PF2E cards app", () => {
-  it("supports parse to batch to print preview", async () => {
+  it("supports parse and add to page", async () => {
     const user = userEvent.setup();
     const parser = new MockParser(successfulParse);
     render(<App parser={parser} />);
@@ -38,17 +38,12 @@ describe("PF2E cards app", () => {
     await user.type(screen.getByLabelText(/AoN source text/i), "Fireball source text");
     await user.click(screen.getByRole("button", { name: "Parse" }));
 
-    expect(await screen.findByText(/1 planned print card from the current parse/i)).toBeInTheDocument();
+    expect(await screen.findByText("Fireball")).toBeInTheDocument();
+    expect(screen.getByText(/Spell · Rank 3/i)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Add to Batch" }));
+    await user.click(screen.getByRole("button", { name: /Add to Page/i }));
 
-    expect(await screen.findByRole("heading", { name: "Batch" })).toBeInTheDocument();
-    expect(screen.getByText(/1 card entries ready/i)).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Preview Print" }));
-
-    expect(await screen.findByRole("heading", { name: "Print Preview" })).toBeInTheDocument();
-    expect(screen.getByText(/A4 Page 1/i)).toBeInTheDocument();
+    expect(await screen.findByText(/1 page/i)).toBeInTheDocument();
   });
 
   it("persists the batch and optional API key in local storage", async () => {
@@ -57,25 +52,25 @@ describe("PF2E cards app", () => {
     const { unmount } = render(<App parser={parser} />);
 
     await user.type(screen.getByLabelText(/^API key$/i), "sk-persisted");
-    await user.click(screen.getByLabelText(/Store the API key/i));
+    await user.click(screen.getByLabelText(/Store API key/i));
     await user.type(screen.getByLabelText(/AoN source text/i), "Fireball source text");
     await user.click(screen.getByRole("button", { name: "Parse" }));
-    await screen.findByText(/1 planned print card from the current parse/i);
-    await user.click(screen.getByRole("button", { name: "Add to Batch" }));
+    await screen.findByText("Fireball");
+    await user.click(screen.getByRole("button", { name: /Add to Page/i }));
 
     unmount();
 
     render(<App parser={parser} />);
-    await user.click(screen.getByRole("button", { name: "Batch" }));
-
-    expect(await screen.findByText(/1 card entries ready/i)).toBeInTheDocument();
-    expect(screen.getByDisplayValue("sk-persisted")).toBeInTheDocument();
 
     const persisted = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "{}");
     expect(persisted.batch).toHaveLength(1);
+
+    // Settings popover is hidden when API key exists — open it
+    await user.click(screen.getByRole("button", { name: "Settings" }));
+    expect(screen.getByDisplayValue("sk-persisted")).toBeInTheDocument();
   });
 
-  it("blocks ambiguous cards until the user confirms warnings", async () => {
+  it("shows warnings as badges but does not block adding", async () => {
     const user = userEvent.setup();
     const parser = new MockParser({
       ...successfulParse,
@@ -91,13 +86,8 @@ describe("PF2E cards app", () => {
 
     await screen.findByText(/Confirm the selected scaling rank/i);
 
-    const addButton = screen.getByRole("button", { name: "Add to Batch" });
-    expect(addButton).toBeDisabled();
-
-    await user.click(screen.getByLabelText(/I reviewed the warnings/i));
-
-    await waitFor(() => {
-      expect(addButton).toBeEnabled();
-    });
+    // Warnings are shown but add button is NOT blocked (no confirmation required)
+    const addButton = screen.getByRole("button", { name: /Add to Page/i });
+    expect(addButton).toBeEnabled();
   });
 });

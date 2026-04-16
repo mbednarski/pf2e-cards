@@ -1,5 +1,4 @@
 export type CardKind = "spell" | "scroll" | "item" | "action";
-export type ViewName = "add" | "batch" | "print";
 
 export interface AppSettings {
   apiKey: string;
@@ -56,7 +55,6 @@ export interface CardDraft {
   hardBlocks: string[];
   confirmWarnings: string[];
   quantity: number;
-  confirmed: boolean;
   status: "idle" | "parsing" | "parsed" | "error";
   errorMessage?: string;
   lastParsedAt?: string;
@@ -105,9 +103,7 @@ export interface PersistedState {
   batch: BatchItem[];
 }
 
-export interface AppState extends PersistedState {
-  currentView: ViewName;
-}
+export type AppState = PersistedState;
 
 export interface ParserRequest {
   sourceText: string;

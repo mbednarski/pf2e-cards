@@ -13,15 +13,13 @@ import { debugLog } from "./lib/debug";
 import { canAddDraftToBatch } from "./lib/parser/normalize";
 import { splitParsedCard } from "./lib/printing/split";
 import { loadPersistedState, savePersistedState } from "./lib/storage/localStorage";
-import type { AppSettings, AppState, BatchItem, CardDraft, ViewName } from "./types";
+import type { AppSettings, AppState, BatchItem, CardDraft } from "./types";
 
 type Action =
-  | { type: "set-view"; view: ViewName }
   | { type: "update-settings"; patch: Partial<AppSettings> }
   | { type: "update-source"; sourceText: string }
   | { type: "set-draft-quantity"; quantity: number }
   | { type: "set-draft-option"; selectedOptionId?: string }
-  | { type: "set-draft-confirmed"; confirmed: boolean }
   | { type: "start-parse" }
   | { type: "parse-success"; draft: CardDraft }
   | { type: "parse-error"; message: string }
@@ -61,11 +59,6 @@ function createBatchItem(draft: CardDraft): BatchItem {
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
-    case "set-view":
-      return {
-        ...state,
-        currentView: action.view,
-      };
     case "update-settings":
       return {
         ...state,
@@ -97,15 +90,6 @@ function reducer(state: AppState, action: Action): AppState {
         draft: {
           ...state.draft,
           selectedOptionId: action.selectedOptionId,
-          confirmed: false,
-        },
-      };
-    case "set-draft-confirmed":
-      return {
-        ...state,
-        draft: {
-          ...state.draft,
-          confirmed: action.confirmed,
         },
       };
     case "start-parse":
@@ -132,7 +116,6 @@ function reducer(state: AppState, action: Action): AppState {
           ...state.draft,
           status: "error",
           errorMessage: action.message,
-          confirmed: false,
         },
       };
     case "reset-draft":
@@ -157,7 +140,6 @@ function reducer(state: AppState, action: Action): AppState {
           ...EMPTY_DRAFT,
           sourceText: "",
         },
-        currentView: "batch",
       };
     }
     case "set-batch-quantity":
@@ -207,13 +189,11 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
   const [state, dispatch] = useReducer(reducer, {
     ...INITIAL_STATE,
     ...persisted,
-    currentView: "add" as const,
   });
   const previousSummaryRef = useRef<string | null>(null);
 
   useEffect(() => {
     debugLog("store", "Loaded persisted state", {
-      currentView: state.currentView,
       batchSize: state.batch.length,
       draftStatus: state.draft.status,
       persistApiKey: state.settings.persistApiKey,
@@ -223,7 +203,6 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     savePersistedState(state);
     const summary = {
-      currentView: state.currentView,
       batchSize: state.batch.length,
       draftStatus: state.draft.status,
       draftName: state.draft.parsed?.name ?? null,
