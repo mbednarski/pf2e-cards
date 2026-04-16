@@ -6,6 +6,10 @@ function normalize(value: string | null | undefined): ActionCost | null {
   if (!value) return null;
   const v = value.toLowerCase().replace(/[_\s]+/g, "-").trim();
 
+  // Check for bracketed notation like [one-action] anywhere in the text
+  const bracketMatch = v.match(/\[(one-action|two-actions|three-actions|reaction|free-action)\]/);
+  if (bracketMatch) return bracketMatch[1] as ActionCost;
+
   if (v.startsWith("three")) return "three-actions";
   if (v.startsWith("two")) return "two-actions";
   if (v.startsWith("one")) return "one-action";

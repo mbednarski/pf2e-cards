@@ -107,13 +107,14 @@ function estimateSectionSize(section: CardSection) {
 const BASE_CHROME_COST = 70;
 const TRAIT_INLINE_CHROME = 2;
 const SUMMARY_FACT_CHROME = 3;
+const MAX_FACT_OVERHEAD = 60;
 const MIN_BODY_BUDGET = 250;
 const MIN_CHUNK_BUDGET = 200;
 
 function estimateRepeatedOverhead(card: ParsedCard, summaryFacts: CardFact[]) {
   const traitWeight = card.traits.reduce((sum, trait) => sum + trait.length + TRAIT_INLINE_CHROME, 0);
   const summaryWeight = summaryFacts.reduce(
-    (sum, fact) => sum + fact.value.length + SUMMARY_FACT_CHROME,
+    (sum, fact) => sum + Math.min(fact.value.length, MAX_FACT_OVERHEAD) + SUMMARY_FACT_CHROME,
     0,
   );
 

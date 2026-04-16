@@ -5,8 +5,6 @@ import type { ParserClient, ParserOutput, ParserRequest } from "../../types";
 const SYSTEM_PROMPT = `You extract Pathfinder 2e Remaster card data from raw Archives of Nethys text.
 Return strict JSON only.
 Rules:
-- Preserve full mechanical and flavor description text.
-- Remove no flavor text.
 - Exclude the Deities metadata line from description output.
 - Keep all traits.
 - Use price only if it is explicitly present in the pasted source block.
@@ -16,6 +14,16 @@ Rules:
 - Put unresolved ambiguity into unresolvedQuestions.
 - Warnings should be concise and actionable.
 - Never invent missing values. Use null or omit them.
+
+Field rules — each piece of source text belongs in exactly ONE field. Never duplicate content across fields:
+- description: ONLY flavor/narrative text. Do NOT include mechanical text (actions, effects, saves, frequency, price, usage) that belongs in other fields. Preserve all flavor text.
+- castOrActivate: The activation name and action cost only (e.g. "Activate—Release Heat [one-action] (concentrate, fire)"). Do NOT include frequency, requirements, or effect text here.
+- frequencyTriggerEffect: ONLY constraints — frequency, trigger, and requirements (e.g. "once per day; Requirements You have a free hand"). Do NOT include the Effect text itself.
+- grantedActions: Full granted-action descriptions including the Effect text (e.g. "You take the heat that's built up in your gloves and discharge it onto an enemy. You deal 6d8 fire damage..."). One entry per action.
+- passiveEffects: Passive benefits granted without activation (e.g. "Gain fire resistance 5 when wearing the gloves").
+- computedValues: Quick-reference derived values that ADD info beyond passiveEffects — e.g. heightened scaling, variant stat changes. Do NOT repeat what is already in passiveEffects.
+- defense: Save type and DC only (e.g. "DC 26 basic Reflex save").
+- rangeAreaTargets: Range, area, and targeting info only.
 `;
 
 function extractJson(text: string) {
@@ -78,18 +86,18 @@ Return JSON shaped like:
     "rankOrLevel": "string",
     "traits": ["string"],
     "traditions": ["string"],
-    "castOrActivate": "string",
+    "castOrActivate": "activation name + action cost only",
     "usageBulk": "string",
-    "rangeAreaTargets": "string",
-    "defense": "string",
-    "frequencyTriggerEffect": "string",
-    "description": "string",
+    "rangeAreaTargets": "range/area/targets only",
+    "defense": "save type and DC only",
+    "frequencyTriggerEffect": "constraints only — not the effect text",
+    "description": "flavor/narrative only — no mechanical text from other fields",
     "priceGp": "string|null",
     "sourcePriceEvidence": "string|null",
-    "computedValues": ["string"],
+    "computedValues": ["derived values not already in passiveEffects"],
     "boldTokens": ["string"],
-    "passiveEffects": ["string"],
-    "grantedActions": ["string"]
+    "passiveEffects": ["passive benefits without activation"],
+    "grantedActions": ["full action effect text goes here"]
   }
 }`;
 
