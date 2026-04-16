@@ -25,7 +25,7 @@ export const selectableOptionSchema = z.object({
 export const parsedCardSchema = z.object({
   name: z.string().trim().min(1),
   kind: z.enum(["spell", "scroll", "item", "action"]),
-  rankOrLevel: z.string().trim().min(1),
+  rankOrLevel: optionalTrimmedString,
   traits: z.array(z.string().trim().min(1)).default([]),
   traditions: optionalTrimmedStringArray,
   castOrActivate: optionalTrimmedString,

@@ -137,7 +137,7 @@ export default function InputWorkspace({ parser }: { parser: ParserClient }) {
             <div>
               <strong className="preview-name">{state.draft.parsed.name}</strong>
               <span className="preview-meta">
-                {state.draft.parsed.kind} · {state.draft.parsed.rankOrLevel}
+                {state.draft.parsed.kind}{state.draft.parsed.rankOrLevel ? ` · ${state.draft.parsed.rankOrLevel}` : ''}
                 {previewCards.length > 1 && ` · ${previewCards.length} cards`}
               </span>
             </div>

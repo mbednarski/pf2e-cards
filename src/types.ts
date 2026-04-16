@@ -17,7 +17,7 @@ export interface SelectableOption {
 export interface ParsedCard {
   name: string;
   kind: CardKind;
-  rankOrLevel: string;
+  rankOrLevel?: string;
   traits: string[];
   traditions?: string[];
   castOrActivate?: string;

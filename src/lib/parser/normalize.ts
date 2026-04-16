@@ -16,7 +16,7 @@ export function normalizeParsedCard(card: ParsedCard): ParsedCard {
   return {
     ...card,
     name: card.name.trim(),
-    rankOrLevel: card.rankOrLevel.trim(),
+    rankOrLevel: card.rankOrLevel?.trim(),
     description: stripDeitiesLine(card.description),
     traits: trimList(card.traits) ?? [],
     traditions: trimList(card.traditions),

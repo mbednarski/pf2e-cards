@@ -218,7 +218,7 @@ export function splitParsedCard(card: ParsedCard, budget = CARD_SECTION_CHARACTE
     partIndex: index + 1,
     partTotal: total,
     kind: card.kind,
-    rankOrLevel: card.rankOrLevel,
+    rankOrLevel: card.rankOrLevel ?? "",
     traits: card.traits,
     summaryFacts,
     boldTokens: card.boldTokens,

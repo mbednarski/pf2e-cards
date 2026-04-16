@@ -65,6 +65,30 @@ describe("normalize helpers", () => {
     );
   });
 
+  it("hard-blocks multi-variant items with missing rankOrLevel and no selection", () => {
+    const draft = createReviewedDraft(
+      "Darkvision Elixir\nAlchemical Consumable Elixir",
+      {
+        ...baseOutput,
+        inferredType: "item",
+        selectableOptions: [
+          { id: "lesser", label: "Darkvision Elixir (Lesser)", levelOrRank: 2 },
+          { id: "moderate", label: "Darkvision Elixir (Moderate)", levelOrRank: 4 },
+        ],
+        parsed: {
+          ...baseOutput.parsed,
+          name: "Darkvision Elixir",
+          kind: "item",
+          rankOrLevel: undefined,
+        },
+      },
+      0.78,
+    );
+
+    expect(draft.hardBlocks).toContain("The parse is missing the final rank or level.");
+    expect(draft.hardBlocks).toContain("Select a spell rank or item variant before adding this card.");
+  });
+
   it("accepts prices when the evidence is present in the source", () => {
     expect(
       priceHasSourceEvidence("Price 12 gp", {

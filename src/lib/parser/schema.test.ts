@@ -36,4 +36,26 @@ describe("parser schema", () => {
     expect(parsed.parsed.traditions).toBeUndefined();
     expect(parsed.parsed.computedValues).toBeUndefined();
   });
+
+  it("accepts null rankOrLevel for multi-variant items", () => {
+    const parsed = parserOutputSchema.parse({
+      inferredType: "item",
+      confidence: 1.0,
+      unresolvedQuestions: [],
+      warnings: [],
+      selectableOptions: [
+        { id: "lesser", label: "Darkvision Elixir (Lesser)", levelOrRank: 2 },
+      ],
+      parsed: {
+        name: "Darkvision Elixir",
+        kind: "item",
+        rankOrLevel: null,
+        traits: ["Alchemical", "Consumable", "Elixir"],
+        description: "Your sight becomes sharper in darkness.",
+      },
+    });
+
+    expect(parsed.parsed.rankOrLevel).toBeUndefined();
+    expect(parsed.selectableOptions).toHaveLength(1);
+  });
 });
