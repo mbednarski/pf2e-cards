@@ -1,3 +1,4 @@
+import CardErrorBoundary from "../../components/CardErrorBoundary";
 import CardFace from "../../components/CardFace";
 import { packPrintPages } from "../../lib/printing/pack";
 import { useAppStore } from "../../store";
@@ -39,7 +40,9 @@ export default function PrintPreviewView() {
             <header className="print-page-header no-print">A4 Page {pageIndex + 1}</header>
             <div className="print-grid">
               {page.map((instance) => (
-                <CardFace card={instance.card} compact key={instance.instanceId} />
+                <CardErrorBoundary fallbackTitle={instance.card?.title} key={instance.instanceId}>
+                  <CardFace card={instance.card} compact />
+                </CardErrorBoundary>
               ))}
             </div>
           </section>

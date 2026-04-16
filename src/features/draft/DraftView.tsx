@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import CardErrorBoundary from "../../components/CardErrorBoundary";
 import CardFace from "../../components/CardFace";
 import { debugError, debugLog } from "../../lib/debug";
 import { canAddDraftToBatch, createReviewedDraft } from "../../lib/parser/normalize";
@@ -264,7 +265,9 @@ export default function DraftView({ parser }: { parser: ParserClient }) {
 
             <div className="preview-card-grid">
               {previewCards.map((card) => (
-                <CardFace card={card} key={card.id} />
+                <CardErrorBoundary fallbackTitle={card?.title} key={card.id}>
+                  <CardFace card={card} />
+                </CardErrorBoundary>
               ))}
             </div>
           </>

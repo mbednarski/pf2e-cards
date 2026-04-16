@@ -62,9 +62,17 @@ export interface CardDraft {
   lastParsedAt?: string;
 }
 
+export interface CardFact {
+  label: string;
+  value: string;
+}
+
+export type CardSectionGroup = "highlight" | "prose";
+
 export interface CardSection {
   label: string;
   content: string | string[];
+  group: CardSectionGroup;
 }
 
 export interface SplitCard {
@@ -75,6 +83,7 @@ export interface SplitCard {
   kind: CardKind;
   rankOrLevel: string;
   traits: string[];
+  summaryFacts: CardFact[];
   boldTokens?: string[];
   sections: CardSection[];
 }
