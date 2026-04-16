@@ -288,23 +288,19 @@ export default function CardFace({ card, compact = false }: { card: SplitCard; c
         })}
       </div>
 
-      {traditionsFact ? (
-        <footer className="card-footer">
-          <span className="card-footer-rule" aria-hidden="true" />
-          <span className="card-footer-text">
+      <div className="card-bottom-bar">
+        <span className="card-bottom-price">
+          {priceFact ? formatPrice(priceFact.value) : ""}
+        </span>
+        {traditionsFact ? (
+          <span className="card-bottom-traditions">
             {traditionsFact.value
               .split(/,\s*/)
               .map((t) => t.trim())
               .filter(Boolean)
               .join(" · ")}
           </span>
-        </footer>
-      ) : null}
-
-      <div className="card-bottom-bar">
-        <span className="card-bottom-price">
-          {priceFact ? formatPrice(priceFact.value) : ""}
-        </span>
+        ) : null}
         <span className="card-bottom-level">
           {card.rankOrLevel}
           {partLabel ? <span className="card-part-indicator">{partLabel}</span> : null}

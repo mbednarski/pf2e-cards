@@ -187,14 +187,14 @@ describe("CardFace", () => {
     expect(flavor!.textContent).toContain("You dilate the flow of time");
   });
 
-  it("renders the traditions footer from summary facts", () => {
+  it("renders traditions in the bottom bar", () => {
     const { container } = render(<CardFace card={card} />);
 
-    const footer = container.querySelector(".card-footer");
-    expect(footer).not.toBeNull();
-    expect(footer!.textContent).toContain("arcane");
-    expect(footer!.textContent).toContain("occult");
-    expect(footer!.textContent).toContain("primal");
+    const traditions = container.querySelector(".card-bottom-traditions");
+    expect(traditions).not.toBeNull();
+    expect(traditions!.textContent).toContain("arcane");
+    expect(traditions!.textContent).toContain("occult");
+    expect(traditions!.textContent).toContain("primal");
   });
 
   it("highlights bold tokens inside the prose body", () => {

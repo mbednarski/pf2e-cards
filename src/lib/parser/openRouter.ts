@@ -9,20 +9,30 @@ Rules:
 - Keep all traits.
 - Use price only if it is explicitly present in the pasted source block.
 - If price is present, include sourcePriceEvidence with the exact supporting source snippet.
+- For scrolls, do NOT set priceGp. Scroll prices are derived from rank automatically.
 - Infer kind as spell, scroll, item, or action.
-- rankOrLevel must use the format "<Kind> <number>": "Item 5" for items, "Rank 3" for spells, "Spell 3" for scrolls. Extract the number from the source header line (e.g. "AmuletItem 5" → "Item 5", "Spell 3" → "Rank 3").
+- rankOrLevel must use the format "<Kind> <number>": "Item 5" for items, "Rank 3" for spells, "Scroll 3" for scrolls. Extract the number from the source header line (e.g. "AmuletItem 5" → "Item 5", "Spell 3" → "Rank 3").
 - For scalable entries, emit selectableOptions and reflect the currently selected option in rankOrLevel and computedValues.
+- For spells and scrolls with Heightened entries, emit selectableOptions for each valid rank.
+  Include the base rank and every heightened rank up through 10.
+  Format: { "id": "rank-3", "label": "Rank 3 (base)", "levelOrRank": 3 }
+  For "Heightened (+1)": emit one option per rank from base through 10.
+  For "Heightened (5th)": emit options only for the base rank plus each specifically named rank.
+- When a selectedOption is provided with a specific rank, RESOLVE all heightened values for that rank.
+  Compute final damage dice and embed them inline in the description text.
+  Do NOT put damage formulas or heightened scaling in computedValues.
+  Example: Fireball at Rank 5 → write "10d6 fire damage" in description, not "6d6 + Heightened (+1): +2d6".
 - Put unresolved ambiguity into unresolvedQuestions.
 - Warnings should be concise and actionable.
 - Never invent missing values. Use null or omit them.
 
 Field rules — each piece of source text belongs in exactly ONE field. Never duplicate content across fields:
-- description: ONLY flavor/narrative text. Do NOT include mechanical text (actions, effects, saves, frequency, price, usage) that belongs in other fields. Preserve all flavor text.
+- description: The spell's full effect text with resolved values. Include flavor text AND mechanical effects with resolved damage inline. Organize as: flavor intro, then mechanical effect with resolved damage, then saving throw outcomes if applicable. Do NOT separate damage into computedValues when a rank is selected. For items and actions, use ONLY flavor/narrative text — do NOT include mechanical text that belongs in other fields.
 - castOrActivate: The activation name and action cost only. Use bracket notation for the action cost: [one-action], [two-actions], [three-actions], [reaction], or [free-action]. Examples: "Activate—Release Heat [one-action] (concentrate, fire)", "Activate [free-action] envision". Do NOT include frequency, requirements, or effect text here.
 - frequencyTriggerEffect: ONLY constraints — frequency, trigger, and requirements (e.g. "once per day; Requirements You have a free hand"). Do NOT include the Effect text itself.
 - grantedActions: Full granted-action descriptions including the Effect text (e.g. "You take the heat that's built up in your gloves and discharge it onto an enemy. You deal 6d8 fire damage..."). One entry per action.
 - passiveEffects: Passive benefits granted without activation (e.g. "Gain fire resistance 5 when wearing the gloves").
-- computedValues: Quick-reference derived values that ADD info beyond passiveEffects — e.g. heightened scaling, variant stat changes. Do NOT repeat what is already in passiveEffects.
+- computedValues: Quick-reference derived values that ADD info beyond passiveEffects — e.g. variant stat changes. Do NOT repeat what is already in passiveEffects. Do NOT put heightened damage scaling here when a rank is selected — resolve it inline in description instead.
 - defense: Save type and DC only (e.g. "DC 26 basic Reflex save").
 - rangeAreaTargets: Range, area, and targeting info only.
 `;

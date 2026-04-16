@@ -1,3 +1,4 @@
+import { SCROLL_PRICES_BY_RANK } from "../../constants";
 import type { CardDraft, CardKind, ParsedCard, ParserOutput } from "../../types";
 
 function trimList(values?: string[]) {
@@ -27,6 +28,11 @@ export function normalizeRankOrLevel(raw: string | undefined, kind: CardKind): s
   // Bare number (e.g. "5") — prepend the appropriate prefix
   const prefix = RANK_OR_LEVEL_PREFIX[kind];
   return `${prefix} ${trimmed}`;
+}
+
+export function extractRankNumber(rankOrLevel: string | undefined): number | null {
+  const match = rankOrLevel?.match(/(\d+)/);
+  return match ? parseInt(match[1], 10) : null;
 }
 
 export function normalizeParsedCard(card: ParsedCard): ParsedCard {
@@ -87,6 +93,15 @@ export function createReviewedDraft(
   selectedOptionId?: string,
 ): CardDraft {
   const normalized = normalizeParserOutput(output);
+
+  // Auto-apply scroll price from lookup table
+  if (normalized.parsed.kind === "scroll" && !normalized.parsed.priceGp) {
+    const rank = extractRankNumber(normalized.parsed.rankOrLevel);
+    if (rank && SCROLL_PRICES_BY_RANK[rank]) {
+      normalized.parsed = { ...normalized.parsed, priceGp: SCROLL_PRICES_BY_RANK[rank] };
+    }
+  }
+
   const hardBlocks: string[] = [];
   const confirmWarnings: string[] = [];
   const selectedOption = normalized.selectableOptions.find((option) => option.id === selectedOptionId);
@@ -103,7 +118,7 @@ export function createReviewedDraft(
     hardBlocks.push("Select a spell rank or item variant before adding this card.");
   }
 
-  if (normalized.parsed.priceGp && !priceHasSourceEvidence(sourceText, normalized.parsed)) {
+  if (normalized.parsed.kind !== "scroll" && normalized.parsed.priceGp && !priceHasSourceEvidence(sourceText, normalized.parsed)) {
     hardBlocks.push("The parsed price is not evidenced in the pasted source text.");
   }
 

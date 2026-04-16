@@ -743,29 +743,6 @@ textarea {
   color: var(--card-ink);
 }
 
-.card-footer {
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6mm;
-  padding-top: 0.8mm;
-}
-
-.card-footer-rule {
-  display: block;
-  height: 0.2mm;
-  background: var(--card-hairline);
-}
-
-.card-footer-text {
-  font-family: var(--card-serif);
-  font-style: italic;
-  font-size: 6pt;
-  letter-spacing: 0.04em;
-  color: var(--card-ink-soft);
-  text-align: center;
-}
-
 .card-bottom-bar {
   margin-top: auto;
   display: flex;
@@ -773,6 +750,15 @@ textarea {
   align-items: baseline;
   padding-top: 0.6mm;
   border-top: 0.2mm solid var(--card-hairline);
+}
+
+.card-bottom-traditions {
+  font-family: var(--card-serif);
+  font-style: italic;
+  font-size: 6pt;
+  letter-spacing: 0.04em;
+  color: var(--card-ink-soft);
+  text-align: center;
 }
 
 .card-bottom-price {

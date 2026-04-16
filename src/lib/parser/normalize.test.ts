@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createReviewedDraft, normalizeRankOrLevel, priceHasSourceEvidence, stripDeitiesLine } from "./normalize";
+import { createReviewedDraft, extractRankNumber, normalizeRankOrLevel, priceHasSourceEvidence, stripDeitiesLine } from "./normalize";
 import type { ParserOutput } from "../../types";
 
 const baseOutput: ParserOutput = {
@@ -122,5 +122,103 @@ describe("normalize helpers", () => {
         sourcePriceEvidence: "Price 12 gp",
       }),
     ).toBe(true);
+  });
+
+  describe("extractRankNumber", () => {
+    it("extracts number from 'Scroll 3'", () => {
+      expect(extractRankNumber("Scroll 3")).toBe(3);
+    });
+
+    it("extracts number from 'Rank 5'", () => {
+      expect(extractRankNumber("Rank 5")).toBe(5);
+    });
+
+    it("extracts bare number", () => {
+      expect(extractRankNumber("7")).toBe(7);
+    });
+
+    it("returns null for undefined", () => {
+      expect(extractRankNumber(undefined)).toBeNull();
+    });
+
+    it("returns null for empty string", () => {
+      expect(extractRankNumber("")).toBeNull();
+    });
+  });
+
+  describe("scroll price injection", () => {
+    it("injects price for scroll with rank 3", () => {
+      const draft = createReviewedDraft(
+        "Fireball\nTraditions arcane, primal",
+        {
+          ...baseOutput,
+          inferredType: "scroll",
+          parsed: {
+            ...baseOutput.parsed,
+            kind: "scroll",
+            rankOrLevel: "Scroll 3",
+            priceGp: null,
+          },
+        },
+        0.78,
+      );
+
+      expect(draft.parsed?.priceGp).toBe("30 gp");
+    });
+
+    it("does not hard-block scroll with auto-applied price", () => {
+      const draft = createReviewedDraft(
+        "Fireball\nTraditions arcane, primal",
+        {
+          ...baseOutput,
+          inferredType: "scroll",
+          parsed: {
+            ...baseOutput.parsed,
+            kind: "scroll",
+            rankOrLevel: "Scroll 3",
+            priceGp: null,
+          },
+        },
+        0.78,
+      );
+
+      expect(draft.hardBlocks).not.toContain(
+        "The parsed price is not evidenced in the pasted source text.",
+      );
+    });
+
+    it("still hard-blocks non-scroll cards with unevidenced price", () => {
+      const draft = createReviewedDraft(
+        "Fireball\nTraditions arcane, primal",
+        {
+          ...baseOutput,
+          parsed: {
+            ...baseOutput.parsed,
+            priceGp: "12 gp",
+          },
+        },
+        0.78,
+      );
+
+      expect(draft.hardBlocks).toContain(
+        "The parsed price is not evidenced in the pasted source text.",
+      );
+    });
+
+    it("does not inject price for non-scroll cards", () => {
+      const draft = createReviewedDraft(
+        "Fireball\nTraditions arcane, primal",
+        {
+          ...baseOutput,
+          parsed: {
+            ...baseOutput.parsed,
+            priceGp: null,
+          },
+        },
+        0.78,
+      );
+
+      expect(draft.parsed?.priceGp).toBeNull();
+    });
   });
 });
