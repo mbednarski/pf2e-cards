@@ -217,6 +217,68 @@ describe("CardFace", () => {
     expect(screen.getByText("2/3")).toBeInTheDocument();
   });
 
+  const poisonCard: SplitCard = {
+    id: "wyvern-poison-1",
+    title: "Wyvern Poison",
+    partIndex: 1,
+    partTotal: 1,
+    kind: "item",
+    rankOrLevel: "Item 8",
+    traits: ["Alchemical", "Consumable", "Injury", "Poison"],
+    summaryFacts: [
+      { label: "Usage / Bulk", value: "held in 2 hands; Bulk L" },
+      { label: "Defense", value: "DC 26 Fortitude" },
+      { label: "Price", value: "80 gp" },
+    ],
+    sections: [
+      {
+        label: "Description",
+        content:
+          "Properly harvested, distilled, and preserved, the poison from a wyvern's sting is effective and direct.\n\nSaving Throw DC 26 Fortitude; Maximum Duration 6 rounds; Stage 1 3d6 poison damage (1 round); Stage 2 3d8 poison damage (1 round); Stage 3 3d10 poison damage (1 round)",
+        group: "prose",
+      },
+    ],
+  };
+
+  it("renders affliction stages as a structured ladder instead of dropping them", () => {
+    const { container } = render(<CardFace card={poisonCard} />);
+
+    const affliction = container.querySelector(".card-affliction");
+    expect(affliction).not.toBeNull();
+
+    const stages = Array.from(affliction!.querySelectorAll("dt")).map((node) => node.textContent);
+    expect(stages).toEqual(["Stage 1", "Stage 2", "Stage 3"]);
+
+    const values = Array.from(affliction!.querySelectorAll("dd")).map((node) => node.textContent);
+    expect(values[0]).toContain("3d6 poison damage (1 round)");
+    expect(values[2]).toContain("3d10 poison damage (1 round)");
+  });
+
+  it("keeps the affliction Maximum Duration but drops the duplicate Saving Throw when a Defense fact is present", () => {
+    const { container } = render(<CardFace card={poisonCard} />);
+
+    const meta = container.querySelector(".card-affliction-meta");
+    expect(meta).not.toBeNull();
+    expect(meta!.textContent).toContain("Maximum Duration 6 rounds");
+    expect(meta!.textContent).not.toMatch(/Saving Throw/i);
+
+    // The flavor text must still render alongside the structured stages.
+    const flavor = container.querySelector(".card-prose-flavor");
+    expect(flavor!.textContent).toContain("Properly harvested");
+  });
+
+  it("keeps the Saving Throw in the affliction meta when there is no Defense fact", () => {
+    const noDefense: SplitCard = {
+      ...poisonCard,
+      summaryFacts: poisonCard.summaryFacts.filter((fact) => fact.label !== "Defense"),
+    };
+
+    const { container } = render(<CardFace card={noDefense} />);
+    const meta = container.querySelector(".card-affliction-meta");
+    expect(meta!.textContent).toMatch(/Saving Throw\s+DC 26 Fortitude/);
+    expect(meta!.textContent).toContain("Maximum Duration 6 rounds");
+  });
+
   it("renders without crashing when legacy persisted data is missing new fields", () => {
     const legacyCard = {
       id: "legacy-1",
