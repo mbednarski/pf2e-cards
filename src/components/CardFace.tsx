@@ -77,6 +77,43 @@ function extractLadder(text: string): { prefix: string; entries: LadderEntry[] }
   return { prefix, entries };
 }
 
+type StageEntry = { label: string; rest: string };
+
+const STAGE_PATTERN = /\bStage\s+\d+\b/gi;
+
+function stripTrailingSeparators(text: string): string {
+  return text.trim().replace(/[;\s]+$/, "");
+}
+
+// Parses an affliction block such as "Saving Throw DC 26 Fortitude; Maximum
+// Duration 6 rounds; Stage 1 3d6 poison damage (1 round); Stage 2 ..." into a
+// meta line (everything before the first stage) plus one entry per stage.
+function extractAffliction(text: string): { meta: string; stages: StageEntry[] } | null {
+  const hits: Array<{ label: string; start: number; end: number }> = [];
+  STAGE_PATTERN.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = STAGE_PATTERN.exec(text)) !== null) {
+    hits.push({ label: match[0], start: match.index, end: match.index + match[0].length });
+  }
+  if (hits.length === 0) return null;
+
+  const meta = stripTrailingSeparators(text.slice(0, hits[0].start));
+  const stages: StageEntry[] = hits.map((hit, i) => {
+    const endContent = i + 1 < hits.length ? hits[i + 1].start : text.length;
+    return { label: hit.label, rest: stripTrailingSeparators(cleanRest(text.slice(hit.end, endContent))) };
+  });
+
+  return { meta, stages };
+}
+
+// The save type/DC is already shown as a Defense fact, so drop a leading
+// "Saving Throw ..." segment from the meta line when that fact is present.
+function cleanAfflictionMeta(meta: string, hasDefense: boolean): string | null {
+  const segments = meta.split(";").map((segment) => segment.trim()).filter(Boolean);
+  const kept = segments.filter((segment) => !(hasDefense && /^(Saving Throw|Save)\b/i.test(segment)));
+  return kept.join("; ") || null;
+}
+
 function isHeightenedLine(paragraph: string) {
   return /^Heightened\b/i.test(paragraph.trim());
 }
@@ -97,7 +134,8 @@ function splitAtHeightened(paragraph: string): string[] {
 
 type ProseBlock =
   | { kind: "flavor"; text: string }
-  | { kind: "ladder"; entries: LadderEntry[] };
+  | { kind: "ladder"; entries: LadderEntry[] }
+  | { kind: "affliction"; meta: string | null; stages: StageEntry[] };
 
 function classifyProse(text: string, { hasDefense }: { hasDefense: boolean }): ProseBlock[] {
   const paragraphs = text
@@ -107,6 +145,8 @@ function classifyProse(text: string, { hasDefense }: { hasDefense: boolean }): P
     .filter(Boolean);
   const blocks: ProseBlock[] = [];
   let ladderRun: LadderEntry[] = [];
+  let afflictionStages: StageEntry[] = [];
+  let afflictionMeta: string | null = null;
 
   const flushLadder = () => {
     if (ladderRun.length > 0) {
@@ -115,8 +155,31 @@ function classifyProse(text: string, { hasDefense }: { hasDefense: boolean }): P
     }
   };
 
+  const flushAffliction = () => {
+    if (afflictionStages.length > 0) {
+      blocks.push({ kind: "affliction", meta: afflictionMeta, stages: afflictionStages });
+      afflictionStages = [];
+      afflictionMeta = null;
+    }
+  };
+
   for (const paragraph of paragraphs) {
     if (isHeightenedLine(paragraph)) continue;
+
+    // Affliction stages carry the real mechanics; recognise them before the
+    // saving-throw drop below so they are never silently discarded.
+    const affliction = extractAffliction(paragraph);
+    if (affliction) {
+      flushLadder();
+      if (afflictionMeta === null && affliction.meta) {
+        afflictionMeta = cleanAfflictionMeta(affliction.meta, hasDefense);
+      }
+      afflictionStages.push(...affliction.stages);
+      continue;
+    }
+
+    flushAffliction();
+
     if (hasDefense && isSavingThrowLine(paragraph)) continue;
 
     const ladder = extractLadder(paragraph);
@@ -140,6 +203,7 @@ function classifyProse(text: string, { hasDefense }: { hasDefense: boolean }): P
   }
 
   flushLadder();
+  flushAffliction();
   return blocks;
 }
 
@@ -157,6 +221,26 @@ function renderProseSection(section: CardSection, boldTokens: string[] | undefin
             <p className="card-prose-flavor" key={`flavor-${index}`}>
               {highlightMechanicalText(block.text, boldTokens)}
             </p>
+          );
+        }
+
+        if (block.kind === "affliction") {
+          return (
+            <div className="card-affliction" key={`affliction-${index}`}>
+              {block.meta ? (
+                <p className="card-affliction-meta">
+                  {highlightMechanicalText(block.meta, boldTokens)}
+                </p>
+              ) : null}
+              <dl className="card-ladder">
+                {block.stages.map((stage, stageIndex) => (
+                  <Fragment key={`${stage.label}-${stageIndex}`}>
+                    <dt>{stage.label}</dt>
+                    <dd>{highlightMechanicalText(stage.rest, boldTokens)}</dd>
+                  </Fragment>
+                ))}
+              </dl>
+            </div>
           );
         }
 
